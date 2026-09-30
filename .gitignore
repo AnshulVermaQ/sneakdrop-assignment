@@ -28,6 +28,7 @@ obj/
 # Logs
 *.log
 logs/
+recordings/
 
 # OS files
 .DS_Store

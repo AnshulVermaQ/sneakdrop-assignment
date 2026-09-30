@@ -1,0 +1,13 @@
+{
+  "name": "sneakdrop-assignment",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Race-safe limited sneaker drop demo",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

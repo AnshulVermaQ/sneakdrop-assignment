@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sneakdrop</title></head>
+<body>
+  <h1>Limited Sneaker Drop</h1>
+  <label>User ID <input id="user" value="buyer-1"></label>
+  <button id="buy">Buy / join waiting line</button>
+  <button id="pay" disabled>Fake pay current hold</button>
+  <pre id="status">Loading...</pre>
+  <p><small>The fake payment intentionally sends a duplicate webhook.</small></p>
+<script>
+const user = document.querySelector('#user'); const status = document.querySelector('#status'); const pay = document.querySelector('#pay');
+user.value = localStorage.getItem('sneakdrop-user') || user.value;
+user.addEventListener('change', () => localStorage.setItem('sneakdrop-user', user.value));
+let latest;
+async function api(path, body) { const response = await fetch(path, {method: body ? 'POST' : 'GET', headers: body ? {'content-type':'application/json'} : {}, body: body && JSON.stringify(body)}); return response.json(); }
+function show(state) { latest = state; const seconds = state.hold ? Math.max(0, Math.ceil((state.hold.expiresAt - Date.now()) / 1000)) : null; status.textContent = `Pairs left: ${state.pairsLeft}\nPurchased by you: ${state.purchased}/2\nHold: ${state.hold ? state.hold.id + ' - ' + seconds + ' seconds left' : 'none'}\nWaiting-line position: ${state.queuePosition || 'not in line'}\nPeople in line: ${state.queueLength}`; pay.disabled = !state.hold; }
+async function refresh() { show(await api('/api/state?userId=' + encodeURIComponent(user.value))); }
+document.querySelector('#buy').onclick = async () => { const r = await api('/api/buy', {userId:user.value}); alert(r.message || (r.queued ? `Joined line at #${r.queuePosition}` : 'Pair held for five minutes')); refresh(); };
+pay.onclick = async () => { await api('/api/fake-payments/charge', {holdId:latest.hold.id, userId:user.value, copies:2, delayMs:200}); setTimeout(refresh, 500); };
+setInterval(refresh, 1000); refresh();
+</script>
+</body></html>
