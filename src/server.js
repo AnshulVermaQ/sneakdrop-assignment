@@ -39,8 +39,12 @@ const server = http.createServer(async (request, response) => {
       const copies = Math.min(Math.max(Number(body.copies) || 1, 1), 5);
       const eventId = body.eventId || `payment_${Date.now()}_${Math.random().toString(16).slice(2)}`;
       const deliver = () => service.paymentSucceeded({ id: eventId, holdId: body.holdId, userId: body.userId, type: 'payment.succeeded' });
-      for (let index = 0; index < copies; index += 1) setTimeout(deliver, delayMs + index * 20);
-      return json(response, 202, { ok: true, eventId, scheduledCopies: copies, delayMs });
+      // Wait before replying rather than scheduling background work. Serverless
+      // platforms may freeze a function as soon as its response is sent.
+      if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      const result = deliver();
+      for (let index = 1; index < copies; index += 1) deliver();
+      return json(response, result.ok ? 200 : 409, { ...result, eventId, deliveredCopies: copies, delayMs });
     }
     if (request.method === 'GET' && url.pathname === '/') {
       response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
@@ -55,4 +59,7 @@ if (require.main === module) {
   server.listen(port, () => console.log(`Sneakdrop is running at http://localhost:${port}`));
   setInterval(() => service.sweepExpired(), 1000).unref();
 }
-module.exports = { server, service };
+// Vercel requires the module's default CommonJS export to be the handler or
+// an http.Server. Exporting an object here causes its "Invalid export" error.
+module.exports = server;
+module.exports.service = service;
